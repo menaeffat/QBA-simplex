@@ -1,97 +1,4 @@
-def calcValue(o_r, o_c, p_i, o_i):
-    return (o_i - (o_r * o_c) / p_i)
-
-
-def calcItem(t, pc, pr, r, c):
-    p_i = t[pr][pc]
-    o_i = t[r][c]
-    o_c = t[r][pc]
-    o_r = t[pr][c]
-    return calcValue(o_r, o_c, p_i, o_i)
-
-
-def createTableau(xs, z):
-    # I need columns to cover the Xs, Ss, As and RHS
-    # I need rows equal to the number of constraints
-    tableau = [None for r in range(len(xs) + 1)]
-    # create identity matrix
-    identity = [[1 if c == r else 0 for c in range(len(xs))] for r in range(len(xs))]
-
-    # fill tableau
-    for i in range(len(xs)):
-        tableau[i] = xs[i][:-2] + identity[i] + [xs[i][-1]]
-    tableau[-1] = [-j for j in z] + [0 for i in range(len(xs) + 1)]
-    bv = [i for i in range(len(z), len(z) + len(xs))]
-    return tableau, bv
-
-
-def isOptimal(t, m):
-    if m:  # max, count negative values
-        return sum(1 for i in t[-1][:-1] if i > 0) == 0
-    else:  # min, count positive values
-        return sum(1 for i in t[-1][:-1] if i < 0) == 0
-
-
-def findPivot(t, m):
-    optimal = isOptimal(t, m)
-    pc, pr = None, None
-    if not optimal:
-        val, pc = min((val, idx) for (idx, val) in enumerate(t[-1][:-1]))
-        val, pr = min((val, idx) for (idx, val) in enumerate([float('inf') if xx is None or xx < 0 else xx for xx in
-                                                              [float('inf') if r[pc] <= 0 else r[-1] / r[pc] for r in
-                                                               t]]))
-    return pc, pr
-
-
-def printTableau(t, bv, xs, z, m=0, pc=None, pr=None):
-    heads = ['x_' + str(i + 1) for i in range(len(z))] + ['S_' + str(i + 1) for i in range(len(xs))]
-
-    if not pc is None:
-        print(" ", " " * (10 + pc * 6) + "↓")
-
-    header = ' BV    | ' + ' | '.join(heads) + ' | RHS  '
-    print(" ", header)
-    hr = ''.join(["|" if i == "|" else "-" for i in header])
-    print(" ", hr)
-    for i in range(len(xs)):
-        row = '{0}) {1} |'.format(i + 1, heads[bv[i]]) + "|".join([str(x).center(5) for x in t[i]])
-        print(" " if (pr is None or pr != i) else "→", row)
-
-    print(" ", hr)
-    Z_row = "    Z  |" + "|".join([str(x).center(5) for x in t[-1]])
-    print(" ", Z_row)
-    print(" ", ''.join(["|" if i == "|" else "=" for i in hr]))
-
-
-def iterate(xs, z, t, bv, pc, pr):
-    nt = [[None for c in range(len(xs) + len(z) + 1)] for r in range(len(xs) + 1)]
-    # pivot item
-    p_i = t[pr][pc]
-    # set pivot column in new tableau
-    for r in range(len(t)):
-        nt[r][pc] = 0 if r != pr else 1
-    # set pivot row in new tableau
-    for c in range(len(t[pr])):
-        nt[pr][c] = 1 if c == pc else t[pr][c] / p_i
-    # set the rest
-    for r in range(len(t)):
-        for c in range(len(t[pr])):
-            if nt[r][c] is None:
-                nt[r][c] = calcItem(t, pc, pr, r, c)
-
-    return nt
-
-
-def printStatus(xs, z, t, bv, m):
-    print("Optimal" if isOptimal(t, m) else "Not optimal")
-    heads = ['x_' + str(i + 1) for i in range(len(z))] + ['S_' + str(i + 1) for i in range(len(xs))] + ['Z']
-    vals = [0] * len(heads)
-    for i in range(len(bv)):
-        vals[bv[i]] = t[i][-1]
-    vals[-1] = t[-1][-1]
-    print("\t".join([heads[i] + " = " + str(vals[i]) for i in range(len(heads))]))
-
-
+# TODO: check the case where in Z one of the coefficients is negative
 def printProblem(xs, z, m):
     # 0 for max, 1 for min
     # 0  for <=, 1 for =, 2 for >=
@@ -100,32 +7,35 @@ def printProblem(xs, z, m):
     xas = 0
     maxLetters = 0
     for eq in xs:
-        xelements = [f"{eq[i]}x_{i + 1}" if eq[i] not in [0, 1] else f"x_{i + 1}" if eq[i] == 1 else "0" for i in
-                     range(len(eq) - 2)]
-        eqs.append([xelements, sign[eq[-2]], eq[-1]])
+        x_elements = [f"{eq[i]}x_{i + 1}" if eq[i] not in [0, 1] else f"x_{i + 1}" if eq[i] == 1 else "0" for i in
+                      range(len(eq) - 2)]
+        eqs.append([x_elements, sign[eq[-2]], eq[-1]])
         xas += 1 if eq[-2] > 0 else 0
-        ll = len(sorted(xelements, key=len)[-1])
+        ll = len(sorted(x_elements, key=len)[-1])
         maxLetters = ll if ll > maxLetters else maxLetters
     print("-" * 20)
-    print("Min" if m else "Max", "Z =", " + ".join([f"{z[i]}x_{i + 1}" for i in range(len(z))]))
+    print("Min" if m else "Max", "Z =", " + ".join([f"{z[i]}x_{i + 1}" if z[i] not in [0, 1]
+                                                    else f"x_{i + 1}" if z[i] == 1 else "" for i in range(len(z))]))
+
     print("Subject to:")
     for i, eq in enumerate(eqs):
         print(f"{i + 1})", " + ".join([i.center(maxLetters) for i in eq[0]]), eq[1], eq[2])
     print(",".join([f"x_{i + 1}" for i in range(len(z))]), sign[2], "0")
 
 
+# TODO: check the case where in Z one of the coefficients is negative
 def printProcessedProblem(xs, z, m):
     # 0 for max, 1 for min
     # 0  for <=, 1 for =, 2 for >=
     sign = ["≤", "=", "⩾"]
-    xas, nss, nas = getTableauVars(xs, z, m)
-    heads = getVariablesNames(xas, nss, nas)
+    xas, nss, nas = get_num_of_vars(xs)
+    heads = get_vars_names(xas, nss, nas)
     maxLetters = len(sorted(heads, key=len)[-1]) + len(sorted([str(j) for i in xs for j in i[:-2]], key=len)[-1])
 
-    print(xs)
     print("-" * 20)
-    print("Min" if m else "Max", "Z =", " + ".join([f"{z[i]}x_{i + 1}" for i in range(len(z))]),
-          ("+" if m else "-"), (" + " if m else " - ").join([f"MA_{i + 1}" for i in range(nas)]))
+    print("Min" if m else "Max", "Z =", " + ".join([f"{z[i]}x_{i + 1}" if z[i] not in [0, 1]
+                                                    else f"x_{i + 1}" if z[i] == 1 else "" for i in range(len(z))]),
+          ("+" if m else "-") if nas else "", (" + " if m else " - ").join([f"MA_{i + 1}" for i in range(nas)]))
     print("Subject to:")
     nas, nss = 0, 0
     for i, eq in enumerate(xs):
@@ -147,14 +57,14 @@ def printProcessedProblem(xs, z, m):
     ), sign[2], "0")
 
 
-def getVariablesNames(xas, nss, nas):
-    heads = [f"x_{i+1}" for i in range(xas)] \
-            + [f"S_{i+1}" for i in range(nss)] \
-            + [f"A_{i+1}" for i in range(nas)]
+def get_vars_names(xas, nss, nas):
+    heads = [f"x_{i + 1}" for i in range(xas)] \
+            + [f"S_{i + 1}" for i in range(nss)] \
+            + [f"A_{i + 1}" for i in range(nas)]
     return heads
 
 
-def getTableauVars(xs, z, m):
+def get_num_of_vars(xs):
     # 0 for max, 1 for min
     # 0  for <=, 1 for =, 2 for >=
     xas, nas, nss = len(xs[0]) - 2, 0, 0
@@ -165,3 +75,112 @@ def getTableauVars(xs, z, m):
         nas += 0 if eq[-2] == 0 else 1
         nss += 0 if eq[-2] == 1 else 1
     return xas, nss, nas
+
+
+def create_tableau(xs, z, m):
+    # 0 for max, 1 for min
+    # 0  for <=, 1 for =, 2 for >=
+    t_xas, t_nss, t_nas = get_num_of_vars(xs)
+    nas, nss = 0, 0
+    eqs = []
+    bv = [0] * len(xs)
+    RHS = []
+    z_rhs = (0, 0)
+    z_row = [(0, 0)] * (t_xas + t_nss + t_nas + 1)
+    heads = get_vars_names(t_xas, t_nss, t_nas)
+    for i, eq in enumerate(xs):
+        # sign = ["≤", "=", "⩾"]
+        # S        S    0   -S
+        # A        0    A    A
+        # BV       S    A    A
+        S = [0] * t_nss
+        A = [0] * t_nas
+
+        if eq[-2] == 0:
+            S[nss] = 1
+            bv[i] = t_xas + nss
+            nss += 1
+        elif eq[-2] == 1:
+            A[nas] = 1
+            bv[i] = t_xas + t_nss + nas
+            nas += 1
+        elif eq[-2] == 2:
+            S[nss] = -1
+            A[nas] = 1
+            bv[i] = t_xas + t_nss + nas
+            nas += 1
+            nss += 1
+        line_eq = eq[:-2] + S + A
+        eqs.append(line_eq)
+        RHS.append(eq[-1])
+        # 0 for max, 1 for min
+        # print(z_row, line_eq)
+        if eq[-2]:
+            z_row = [(z_row[ii][0] + line_eq[ii] if m else z_row[ii][0] - line_eq[ii], z_row[ii][1])
+                     for ii in range(len(heads))] + [(z_row[-1][0] + (eq[-1] if m else -eq[-1]), z_rhs[1])]
+
+    for i, zz in enumerate(z):
+        z_row[i] = (z_row[i][0], -zz)
+    if nas:
+        z_row = z_row[:-nas - 1] + [(0, 0)] * nas + [z_row[-1]]
+    # print(z_row)
+    return heads, eqs, RHS, bv, z_row
+
+
+def print_tableau(heads, eqs, rhs, bv, z_row, pc=None, pr=None):
+    max_letters = 7
+    if pc is not None:
+        print(" ", " " * (11 + (max_letters + 1) * pc) + "↓".center(max_letters))
+    header = ("|".join(["BV".center(10)] + [h.center(max_letters) for h in heads] + ["RHS".center(10)]))
+    hr = ''.join(["|" if i == "|" else "-" for i in header])
+    print(" ", header)
+    print(" ", hr)
+
+    for i, line in enumerate(eqs):
+        print_line = f"{i:02d})" + f" {heads[bv[i]]}".center(7) + "|" \
+                     + "|".join([f"{e}".center(max_letters) for e in line]) + "|" + f"{rhs[i]}".center(10)
+        print("→" if i == pr else " ", print_line)
+    print(" ", hr)
+
+    zl1 = [z_row[i_z][0] for i_z in range(len(z_row))]
+    zl2 = [z_row[i_z][1] for i_z in range(len(z_row))]
+    zl1_nz = zl1 != [0] * len(zl1)
+    zl2_nz = zl2 != [0] * len(zl2)
+    if not zl1_nz and zl2_nz:
+        z_line = ["Z".center(10)] + [f"{z}".center(max_letters) for z in zl2]
+        print(" ", "|".join(z_line))
+    else:
+        z_line = ["Z".center(10)] + [i.center(max_letters) for i in [
+            f"{z}M" if z not in [-1, 0, 1] else "0" if z == 0 else "M" if z == 1 else "-M" for z in
+            zl1]]
+        print(" ", "|".join(z_line))
+        if zl1_nz and zl2_nz:
+            z_line = ["".center(10)] + [f"{z}".center(max_letters) for z in zl2]
+            print(" ", "|".join(z_line))
+    print(" ", ''.join(["|" if i == "|" else "=" for i in hr]))
+
+
+def get_pivot_column(z_row, m):
+    # 0 for max,            1 for min
+    # look for most -ve     look for most positive
+    m_power = max([abs(i[0]) for i in z_row[:-1]] + [abs(i[1]) for i in z_row[:-1]])
+    big_m = 100 ** m_power
+    z_comp = [z[0] * big_m + z[1] for z in z_row[:-1]]
+    idx = 0
+    pc = 0
+    if m:
+        pc = max((val, idx) for (idx, val) in enumerate(z_comp))
+    else:
+        pc = min((val, idx) for (idx, val) in enumerate(z_comp))
+    return pc[1]
+
+
+def get_pivot_row(eqs, rhs, pc):
+    ratio = []
+    for i, eq in enumerate(eqs):
+        if eq[pc] == 0:
+            ratio.append(float("inf"))
+        else:
+            ratio.append(rhs[i] / eq[pc])
+    pr = min((val, idx) for (idx, val) in enumerate(ratio))
+    return pr[1]
