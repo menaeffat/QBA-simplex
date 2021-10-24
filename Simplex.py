@@ -77,7 +77,7 @@ def get_num_of_vars(xs):
     return xas, nss, nas
 
 
-def create_tableau(xs, z, m):
+def create_initial_tableau(xs, z, m):
     # 0 for max, 1 for min
     # 0  for <=, 1 for =, 2 for >=
     t_xas, t_nss, t_nas = get_num_of_vars(xs)
@@ -166,8 +166,6 @@ def get_pivot_column(z_row, m):
     m_power = max([abs(i[0]) for i in z_row[:-1]] + [abs(i[1]) for i in z_row[:-1]])
     big_m = 100 ** m_power
     z_comp = [z[0] * big_m + z[1] for z in z_row[:-1]]
-    idx = 0
-    pc = 0
     if m:
         pc = max((val, idx) for (idx, val) in enumerate(z_comp))
     else:
@@ -178,9 +176,86 @@ def get_pivot_column(z_row, m):
 def get_pivot_row(eqs, rhs, pc):
     ratio = []
     for i, eq in enumerate(eqs):
-        if eq[pc] == 0:
+        if eq[pc] <= 0:
             ratio.append(float("inf"))
         else:
             ratio.append(rhs[i] / eq[pc])
     pr = min((val, idx) for (idx, val) in enumerate(ratio))
     return pr[1]
+
+
+def is_optimal(z_row, m):
+    # 0 for max,            1 for min
+    # no  -ve               no positive
+    m_power = max([abs(i[0]) for i in z_row[:-1]] + [abs(i[1]) for i in z_row[:-1]])
+    big_m = 100 ** m_power
+    z_comp = [z[0] * big_m + z[1] for z in z_row[:-1]]
+    optimal = sum([i > 0 if m else i < 0 for i in z_comp]) == 0
+    return optimal
+
+
+def get_status(heads, nas, rhs, bv, z_row, m):
+    optimal = is_optimal(z_row, m)
+    values = [0] * len(z_row)
+    for i in range(len(bv)):
+        values[bv[i]] = rhs[i]
+    keys = heads + ["Z"]
+    values[-1] = z_row[-1]
+    feasible = values[-nas - 1:-1] == [0] * nas
+    return keys, values, feasible, optimal
+
+
+def print_status(status):
+    z = status[1][-1]
+    print_z0 = f"{z[0]}M" if z[0] not in [-1, 0, 1] else "0" if z[0] == 0 else "M" if z[0] == 1 else "-M"
+    print_z1 = f"{z[1]}"
+    print("OT:", status[3], "FT:", status[2],
+          "\t".join([f"{status[0][i]} = {status[1][i]}" for i in range(len(status[0]) - 1)]),
+          f"Z = {print_z0} + {print_z1}".replace("+ -", "- "))
+
+
+def calcValue(o_r, o_c, p_i, o_i):
+    return o_i - (o_r * o_c) / p_i
+
+
+def calcItem(t, pc, pr, r, c):
+    p_i = t[pr][pc]
+    o_i = t[r][c]
+    o_c = t[r][pc]
+    o_r = t[pr][c]
+    return calcValue(o_r, o_c, p_i, o_i)
+
+
+def iterate(eqs, rhs, z_row, pc, pr):
+    new_table = [[None for i in range(len(eqs[1]))] for j in range(len(eqs))]
+    new_rhs = [None for i in range(len(rhs))]
+    new_z_row = [(0, 0) for i in range(len(z_row))]
+    # pivot item
+    p_i = eqs[pr][pc]
+    # set pivot column in new tableau
+    for row_index in range(len(eqs)):
+        new_table[row_index][pc] = 1 if row_index == pr else 0
+    new_z_row[pc] = (0, 0)  # this is useless because It's initially (0, 0)
+    # set pivot row in new tableau
+    for c in range(len(eqs[pr])):
+        new_table[pr][c] = 1 if c == pc else eqs[pr][c] / p_i
+    new_rhs[pr] = rhs[pr] / p_i
+    # set the rest
+    for r in range(len(eqs)):
+        for c in range(len(eqs[pr])):
+            if new_table[r][c] is None:
+                new_table[r][c] = calcItem(eqs, pc, pr, r, c)
+    for i in range(len(rhs)):
+        if i != pr:
+            new_rhs[i] = calcValue(eqs[i][pc], rhs[pr], p_i, rhs[i])
+    for i in range(len(z_row)-1):
+        if i != pc:
+            z0 = calcValue(z_row[pc][0], eqs[pr][i], p_i, z_row[i][0])
+            z1 = calcValue(z_row[pc][1], eqs[pr][i], p_i, z_row[i][1])
+            new_z_row[i] = (z0, z1)
+
+    z0 = calcValue(z_row[pc][0], rhs[pr], p_i, z_row[-1][0])
+    z1 = calcValue(z_row[pc][1], rhs[pr], p_i, z_row[-1][1])
+    new_z_row[-1] = (z0, z1)
+
+    return new_table, new_rhs, new_z_row
