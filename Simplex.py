@@ -1,4 +1,7 @@
 # TODO: check the case where in Z one of the coefficients is negative
+from fraction import Fraction
+
+
 def printProblem(xs, z, m):
     # 0 for max, 1 for min
     # 0  for <=, 1 for =, 2 for >=
@@ -138,7 +141,8 @@ def print_tableau(heads, eqs, rhs, bv, z_row, pc=None, pr=None):
 
     for i, line in enumerate(eqs):
         print_line = f"{i:02d})" + f" {heads[bv[i]]}".center(7) + "|" \
-                     + "|".join([f"{e}".center(max_letters) for e in line]) + "|" + f"{rhs[i]}".center(10)
+                     + "|".join([format_number(e).center(max_letters) for e in line]) + "|" \
+                     + format_number(rhs[i]).center(10)
         print("→" if i == pr else " ", print_line)
     print(" ", hr)
 
@@ -151,11 +155,11 @@ def print_tableau(heads, eqs, rhs, bv, z_row, pc=None, pr=None):
         print(" ", "|".join(z_line))
     else:
         z_line = ["Z".center(10)] + [i.center(max_letters) for i in [
-            f"{z}M" if z not in [-1, 0, 1] else "0" if z == 0 else "M" if z == 1 else "-M" for z in
+            format_number(z, "M") for z in
             zl1]]
         print(" ", "|".join(z_line))
         if zl1_nz and zl2_nz:
-            z_line = ["".center(10)] + [f"{z}".center(max_letters) for z in zl2]
+            z_line = ["".center(10)] + [format_number(z).center(max_letters) for z in zl2]
             print(" ", "|".join(z_line))
     print(" ", ''.join(["|" if i == "|" else "=" for i in hr]))
 
@@ -207,11 +211,34 @@ def get_status(heads, nas, rhs, bv, z_row, m):
 
 def print_status(status):
     z = status[1][-1]
-    print_z0 = f"{z[0]}M" if z[0] not in [-1, 0, 1] else "0" if z[0] == 0 else "M" if z[0] == 1 else "-M"
-    print_z1 = f"{z[1]}"
+    # print_z0 = f"{z[0]:.2f}M" if z[0] not in [-1, 0, 1] else "0" if z[0] == 0 else "M" if z[0] == 1 else "-M"
+    print_z0 = format_number(z[0], "M")
+    print_z1 = format_number(z[1])
     print("OT:", status[3], "FT:", status[2],
           "\t".join([f"{status[0][i]} = {status[1][i]}" for i in range(len(status[0]) - 1)]),
           f"Z = {print_z0} + {print_z1}".replace("+ -", "- "))
+
+
+def format_number(x, var=None) -> str:
+    if var is None:
+        var = ""
+    number = ""
+    if x not in [-1, 0, 1]:
+        if int(x) == x:
+            number = f"{int(x)}{var}"
+        else:
+            n = Fraction(x)
+            if len(str(n.denominator)) < 3:
+                number = f"{format_number(n.numerator,var)}/{n.denominator}"
+            else:
+                number = f"{x:.2f}{var}"
+    elif x == 0:
+        number = "0"
+    elif x == 1:
+        number = "1" if var == "" else f"{var}"
+    elif x == -1:
+        number = "-1" if var == "" else f"-{var}"
+    return number
 
 
 def calcValue(o_r, o_c, p_i, o_i):
@@ -248,7 +275,7 @@ def iterate(eqs, rhs, z_row, pc, pr):
     for i in range(len(rhs)):
         if i != pr:
             new_rhs[i] = calcValue(eqs[i][pc], rhs[pr], p_i, rhs[i])
-    for i in range(len(z_row)-1):
+    for i in range(len(z_row) - 1):
         if i != pc:
             z0 = calcValue(z_row[pc][0], eqs[pr][i], p_i, z_row[i][0])
             z1 = calcValue(z_row[pc][1], eqs[pr][i], p_i, z_row[i][1])

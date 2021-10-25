@@ -66,8 +66,8 @@ if __name__ == "__main__":
         # get a pivot
         pc = Simplex.get_pivot_column(z_row, m)
         pr = Simplex.get_pivot_row(eqs, RHS, pc)
-        Simplex.print_tableau(heads, eqs, RHS, bv, z_row, pc, pr)
         status = Simplex.get_status(heads, nas, RHS, bv, z_row, m)
+        Simplex.print_tableau(heads, eqs, RHS, bv, z_row, pc if not status[3] else None, pr if not status[3] else None)
         Simplex.print_status(status)
         bv[pr] = pc
 
