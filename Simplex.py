@@ -151,7 +151,7 @@ def print_tableau(heads, eqs, rhs, bv, z_row, pc=None, pr=None):
     zl1_nz = zl1 != [0] * len(zl1)
     zl2_nz = zl2 != [0] * len(zl2)
     if not zl1_nz and zl2_nz:
-        z_line = ["Z".center(10)] + [f"{z}".center(max_letters) for z in zl2]
+        z_line = ["Z".center(10)] + [format_number(z).center(max_letters) for z in zl2]
         print(" ", "|".join(z_line))
     else:
         z_line = ["Z".center(10)] + [i.center(max_letters) for i in [
@@ -215,8 +215,8 @@ def print_status(status):
     print_z0 = format_number(z[0], "M")
     print_z1 = format_number(z[1])
     print("OT:", status[3], "FT:", status[2],
-          "\t".join([f"{status[0][i]} = {status[1][i]}" for i in range(len(status[0]) - 1)]),
-          f"Z = {print_z0} + {print_z1}".replace("+ -", "- "))
+          "\t".join([f"{status[0][i]} = {format_number(status[1][i])}" for i in range(len(status[0]) - 1)]),
+          f"Z = {print_z0} + {print_z1}".replace("+ -", "- ").replace("0 + ", ""))
 
 
 def format_number(x, var=None) -> str:
