@@ -1,4 +1,5 @@
 # TODO: check the case where in Z one of the coefficients is negative or has a constant
+# TODO: handle alternate solution (https://www.youtube.com/watch?v=ikMz8JOyOe0)
 from fraction import Fraction
 
 
