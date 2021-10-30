@@ -1,4 +1,4 @@
-# TODO: check the case where in Z one of the coefficients is negative
+# TODO: check the case where in Z one of the coefficients is negative or has a constant
 from fraction import Fraction
 
 
@@ -26,7 +26,6 @@ def printProblem(xs, z, m):
     print(",".join([f"x_{i + 1}" for i in range(len(z))]), sign[2], "0")
 
 
-# TODO: check the case where in Z one of the coefficients is negative
 def printProcessedProblem(xs, z, m):
     # 0 for max, 1 for min
     # 0  for <=, 1 for =, 2 for >=
@@ -177,15 +176,24 @@ def get_pivot_column(z_row, m):
     return pc[1]
 
 
-def get_pivot_row(eqs, rhs, pc):
+def get_pivot_row(eqs, rhs, pc, heads, bv):
     ratio = []
     for i, eq in enumerate(eqs):
         if eq[pc] <= 0:
             ratio.append(float("inf"))
         else:
             ratio.append(rhs[i] / eq[pc])
-    pr = min((val, idx) for (idx, val) in enumerate(ratio))
-    return pr[1]
+    # check to see if it is an unbound solution
+    if ratio == [float("inf")] * len(ratio):
+        # Solution is unbound
+        return None
+    else:
+        # apply Bland rules to avoid degenerate solutions
+        min_val = min((val, idx) for (idx, val) in enumerate(ratio))
+        indices_of_min_val = [i for i, v in enumerate(ratio) if v == min_val[0]]
+        indices_of_BV = [bv[i] for i, v in enumerate(ratio) if v == min_val[0]]
+        pr = indices_of_min_val[min((val, idx) for (idx, val) in enumerate(indices_of_BV))[1]]
+        return pr
 
 
 def is_optimal(z_row, m):

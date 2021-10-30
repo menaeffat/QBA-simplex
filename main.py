@@ -49,12 +49,11 @@ xs = [
 # ]
 
 m = 0  # 0 for max, 1 for min
-z = [2,1]
+z = [2,2]
 # 0  for <=, 1 for =, 2 for >=
 xs = [
-    [1,0,0,210],
-    [0,1,0,180],
-    [2,1,0,600]
+    [1,2,2,5],
+    [1,1,2,3]
 ]
 
 
@@ -73,12 +72,17 @@ if __name__ == "__main__":
 
     # for III in range(5):
     while not status[3]:
-        # get a pivot
         pc = Simplex.get_pivot_column(z_row, m)
-        pr = Simplex.get_pivot_row(eqs, RHS, pc)
+        pr = Simplex.get_pivot_row(eqs, RHS, pc, heads, bv)
         status = Simplex.get_status(heads, nas, RHS, bv, z_row, m)
-        Simplex.print_tableau(heads, eqs, RHS, bv, z_row, pc if not status[3] else None, pr if not status[3] else None)
+        Simplex.print_tableau(heads, eqs, RHS, bv, z_row, pc if not status[3] else None,
+                              pr if not status[3] or pr is None else None)
         Simplex.print_status(status)
+
+        if pr is None:
+            print("Unbound solution")
+            break
+
         bv[pr] = pc
 
         eqs, RHS, z_row = Simplex.iterate(eqs, RHS, z_row, pc, pr)
